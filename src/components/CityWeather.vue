@@ -88,7 +88,7 @@ export default class CityWidget extends Vue {
 
   get iconSrc() {
     if (this.weather) {
-      return `http://openweathermap.org/img/wn/${this.weather.icon}@2x.png`;
+      return `https://openweathermap.org/img/wn/${this.weather.icon}@2x.png`;
     }
     return '';
   }
@@ -111,7 +111,6 @@ export default class CityWidget extends Vue {
     const { lat, lon } = this.city.coords;
     const data = await fetchWeatherByCoordinates(lat, lon);
     const { temp, feels_like, temp_min, temp_max, pressure, humidity } = data.main;
-    console.log('weather data', data);
 
     this.weather = {
       temp,

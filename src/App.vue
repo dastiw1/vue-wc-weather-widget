@@ -17,7 +17,7 @@
             >
           </v-col>
         </v-row>
-        <settings v-if="view === 'settings'" />
+        <settings :cities="cities" v-if="view === 'settings'" @add="addCity" @remove="removeCity" />
       </v-container>
     </v-main>
   </v-app>
@@ -25,25 +25,48 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
+// Ensure you are using css-loader
+import Vuetify from 'vuetify/lib';
 import draggable from 'vuedraggable';
 import store from './store';
 import CityWidget from '@/components/CityWeather.vue';
 import Settings from '@/components/Settings.vue';
 import { getAddressFromCoords } from '@/api/google';
-import { mapMutations, mapState } from 'vuex';
+import vuetify from '@/plugins/vuetify';
+
+const loadStylesheets = () => {
+  const idPrefix = 'weather-widget__';
+  const stylesheets: Record<string, string> = {
+    mdi: '//cdn.materialdesignicons.com/5.4.55/css/materialdesignicons.min.css',
+  };
+
+  Object.keys(stylesheets).forEach((cssId: string) => {
+    const url = stylesheets[cssId];
+    const fullId = idPrefix + cssId;
+    if (!document.getElementById(fullId)) {
+      const head = document.getElementsByTagName('head')[0];
+      const link = document.createElement('link');
+      link.id = fullId;
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = url;
+      link.media = 'all';
+      head.appendChild(link);
+    }
+  });
+};
 
 @Component({
   components: { draggable, CityWidget, Settings },
-  computed: {
-    ...mapState(['cities']),
-  },
-  methods: mapMutations(['removeCity', 'addCity']),
 })
 export default class App extends Vue {
-  cities!: City[];
   view!: string;
   geolocationAllowed!: boolean;
-
+  vuetify!: Vuetify;
+  constructor() {
+    super();
+    this.$vuetify = vuetify.framework;
+  }
   data() {
     return {
       view: 'cities',
@@ -52,8 +75,12 @@ export default class App extends Vue {
   }
 
   created() {
-    this.$store.registerModule('app', store);
     this.init();
+    loadStylesheets();
+  }
+
+  get cities() {
+    return store.state.cities;
   }
 
   changeView(view: string) {
@@ -63,11 +90,19 @@ export default class App extends Vue {
     }
   }
 
+  public addCity(city: City) {
+    return store.commit('addCity', city);
+  }
+
+  public removeCity(city: City) {
+    return store.commit('removeCity', city);
+  }
+
   async init() {
     if (!this.cities.length) {
       try {
         const city = await this.getCurrentPosition();
-        this.$store.commit('addCity', city);
+        this.addCity(city);
       } catch (error) {
         alert('Geolocation is not allowed!');
       }
@@ -81,8 +116,6 @@ export default class App extends Vue {
           const { latitude, longitude } = position.coords;
           this.geolocationAllowed = true;
           await getAddressFromCoords(latitude, longitude).then((data) => {
-            console.log('google data', data);
-
             const cityRecord = data.address_components.find((r) => r.types.includes('locality'));
             const countryRecord = data.address_components.find((r) => r.types.includes('country'));
 
@@ -104,7 +137,6 @@ export default class App extends Vue {
           });
         },
         (error) => {
-          console.log(error.message);
           reject(error.message);
           this.geolocationAllowed = false;
         }
@@ -114,9 +146,23 @@ export default class App extends Vue {
 }
 </script>
 
+<style lang="css">
+@import '~@mdi/font/css/materialdesignicons.css';
+@import '~vuetify/dist/vuetify.css';
+/* @import '//cdn.materialdesignicons.com/5.4.55/css/materialdesignicons.min.css'; */
+</style>
+
 <style lang="scss">
+ 
 #app {
   width: 280px;
+   box-sizing: border-box;
+  /* All browsers without overlaying scrollbars */
+  -webkit-text-size-adjust: 100%;
+  /* Prevent adjustments of font size after orientation changes in iOS */
+  word-break: normal;
+  -moz-tab-size: 4;
+  tab-size: 4;
   .main-container {
     position: relative;
     .settings-icon {

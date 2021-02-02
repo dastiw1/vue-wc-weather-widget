@@ -87,19 +87,16 @@ export async function request<T>(
 
 function handleError(data: APIResponseError): IHandleErrorResult {
   const message: Nullable<string> = 'Unknown Error';
-  console.log(data);
 
   return { message };
 }
 
 axios.interceptors.request.use(function(config) {
-  console.log('test', config.method, config.baseURL);
   if (
     config.method === 'get' &&
     !config.url?.startsWith('http') &&
     config.baseURL === process.env.VUE_APP_OPENWEATHER_API_BASE_URL
   ) {
-    // console.log('base',config.baseURL ,config.url)
     config.params.appid = process.env.VUE_APP_OPENWEATHER_API_KEY;
   }
 

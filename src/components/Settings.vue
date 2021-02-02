@@ -2,56 +2,75 @@
   <v-row class="">
     <v-col cols="12" class="px-6">
       <div class="font-weight-bold pb-6">Settings</div>
-      <draggable v-model="citiesList" class="cities-list__container">
+      <draggable v-model="citiesList" class="cities-list__container" :options="{ handle: '.handle' }" >
         <v-text-field
           v-for="city in cities"
           :key="city.coords.lat + '-' + city.coords.lon"
           readonly
-          class="city-inpu-item mb-4"
+          class="city-input-item mb-4"
           :value="`${city.name}, ${city.country.code}`"
           hide-details=""
           dense
           outlined
         >
           <template v-slot:prepend-inner="">
-            <v-icon>mdi-reorder-horizontal</v-icon>
+            <v-icon class="handle">mdi-reorder-horizontal</v-icon>
           </template>
           <template v-slot:append="">
-            <v-icon @click="removeCity(city)">mdi-trash-can-outline</v-icon>
+            <v-icon @click="$emit('remove', city)">mdi-trash-can-outline</v-icon>
           </template>
         </v-text-field>
       </draggable>
     </v-col>
     <v-col cols="12" class="px-6">
-      <v-subheader class="black--text pl-0 pb-0 font-weight-bold">Add Location:</v-subheader>
-      <v-text-field v-model="newCityName" hide-details="" dense outlined @keyup.enter="handleEnteringNewCity">
-        <template v-slot:append="">
-          <v-icon @click="handleEnteringNewCity">mdi-subdirectory-arrow-left</v-icon>
-        </template>
-      </v-text-field>
+      <v-form  ref="form" @submit.prevent="handleEnteringNewCity">
+        <v-subheader class="black--text pl-0 pb-0 font-weight-bold">Add Location:</v-subheader>
+        <v-text-field
+          v-model="newCityName"
+          hide-details=""
+          dense
+          outlined
+          :rules="inputRules"
+        >
+          <template v-slot:append="">
+            <v-icon @click="handleEnteringNewCity">mdi-subdirectory-arrow-left</v-icon>
+          </template>
+        </v-text-field>
+      </v-form>
     </v-col>
   </v-row>
 </template>
 
 <script lang="ts">
-import { fetchWeatherByCityName } from '@/api/openweather';
 import { Component, Vue } from 'vue-property-decorator';
 import draggable from 'vuedraggable';
-import { mapMutations, mapState } from 'vuex';
+
+import { fetchWeatherByCityName } from '@/api/openweather';
+import store from '@/store';
+
+type VForm = Vue & {
+  validate(): boolean;
+};
 
 @Component({
   components: { draggable },
-  computed: {
-    ...mapState(['cities']),
+  props: {
+    cities: {
+      type: Array,
+      required: true,
+    },
   },
-  methods: mapMutations(['removeCity', 'addCity']),
 })
 export default class Settings extends Vue {
   cities!: City[];
   newCityName!: string;
+  $refs!: {
+    form: VForm;
+  };
   data() {
     return {
       newCityName: '',
+      inputRules: [(v: string) => (v != null && v != '') || 'Please enter city name'],
     };
   }
 
@@ -60,10 +79,13 @@ export default class Settings extends Vue {
   }
 
   public set citiesList(cities: City[]) {
-    this.$store.commit('setCities', cities);
+    store.commit('setCities', cities);
   }
 
   async handleEnteringNewCity() {
+    if (!this.$refs.form.validate()) {
+      return false;
+    }
     try {
       const data = await fetchWeatherByCityName(this.newCityName);
 
@@ -75,14 +97,21 @@ export default class Settings extends Vue {
         coords: data.coord,
       };
 
-      this.$store.commit('addCity', city);
+      this.$emit('add', city);
     } catch (error) {
       alert('No city found!');
     } finally {
       this.newCityName = '';
     }
   }
+
 }
 </script>
 
-<style lang="scss"></style>
+<style lang="scss">
+.city-input-item {
+  &__handler {
+    cursor: move;
+  }
+}
+</style>
